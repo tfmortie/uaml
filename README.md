@@ -4,6 +4,11 @@
 
 ## Installation 
 
+Following packages are required:
+
+* numpy 
+* scikit-learn
+
 ### Dependencies 
 
 ### User installation
