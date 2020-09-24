@@ -1,5 +1,6 @@
 import time
 
+import numpy as np
 import uacls.utils as u
 
 from sklearn.utils.multiclass import unique_labels
@@ -10,8 +11,6 @@ from sklearn.exceptions import NotFittedError, FitFailedWarning
 
 class UAClassifier(BaseEstimator, ClassifierMixin):
     """Generic uncertainty-aware classifier.
-
-    Generic uncertainty-aware classifier which models epistemic and aleatoric uncertainty.
 
     Parameters
     ----------
@@ -41,7 +40,6 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         self.estimator = estimator
         self.mc_sample_size = mc_sample_size
         self.n_mc_samples = n_mc_samples
-        self.sample_size = sample_size
         self.verbose = verbose
         self.random_state = random_state
 
@@ -64,7 +62,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         # Check that X and y have correct shape
         X, y = check_X_y(X, y)
         # Check whether base estimator supports probabilities
-        if not hassattr(self.estimator, 'predict_proba'):
+        if not hasattr(self.estimator, 'predict_proba'):
             raise NotFittedError("{0} does not support probabilistic predictions.".format(self.estimator))
         # Check if mc_sample_size is float
         if not isinstance(self.mc_sample_size, float):
@@ -81,7 +79,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
             # Create estimator, given parameters of base estimator and bootstrap sample indices
             model["clf"] = type(self.estimator)(**self.estimator.get_params())
             model["ind"] = self.random_state_.randint(0, X.shape[0], size=self.n_samples_)
-            model["clf"].fit(X[model["ind"],:], y)
+            model["clf"].fit(X[model["ind"],:], y[model["ind"]])
             self.ensemble.append(model)
         stop_time = time.time()
         if self.verbose >=1:
@@ -93,45 +91,94 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
 
         return self
 
-    def predict(self, X):
+    def predict(self, X, avg=True):
         """Return class predictions.
 
         Parameters
         ----------
         X : {array-like, sparse matrix}, shape (n_samples, n_features)
             Input samples.
+        avg : boolean, default=True
+            Return model average when true, and array of predictions otherwise.
 
         Returns
         -------
-        y : ndarray, shape (n_samples,)
+        y : ndarray
             Returns an array of predicted class labels.
         """
         # Check input
         X = check_array(X)
         # Obtain predictions 
-        for model in self.models:
+        preds = []
+        for model in self.ensemble:
             try:
-                # predict here
+                # Append predictions to prediction list
+                preds.append(model["clf"].predict(X).reshape(-1,1))
             except NotFittedError as e:
                 print("This {0} instance is not fitted yet. Cal 'fit' with appropriate arguments before using this method.".format(type(model["clf"])))
+        preds = np.hstack(preds)
+        if avg:
+            return np.apply_along_axis(u.get_most_common_el, 1, preds)
+        else:
+            return preds
 
-    def predict_proba(self, x):
-        """Probability estimates.
+    def predict_proba(self, X, avg=True):
+        """Return probability estimates.
         
-        The returned estimates for all classes are ordered by the
-        label of classes. Estimates are provided for each Monte Carlo sample.
+        Important: the returned estimates for all classes are ordered by the
+        label of classes. 
 
         Parameters
         ----------
-        X : {array-like, sparse matrix} shape (n_samples, n_features)
+        X : {array-like, sparse matrix}, shape (n_samples, n_features)
+            Input samples.
+        avg : boolean, default=True
+            Return model average when true, and array of probability estimates otherwise.
+    
+        Returns
+        -------
+        P : ndarray
+            Returns the probability of the sample for each class in the model,
+            where classes are ordered as they are in ``self.classes_``.
+        """
+        # Check input
+        X = check_array(X)
+        # Obtain predictions 
+        probs = []
+        for model in self.ensemble:
+            try:
+                # Append predictions to prediction list
+                probs.append(np.expand_dims(model["clf"].predict_proba(X),axis=1))
+            except NotFittedError as e:
+                print("This {0} instance is not fitted yet. Cal 'fit' with appropriate arguments before using this method.".format(type(model["clf"])))
+        probs = np.concatenate(probs, axis=1)
+        if avg: 
+            return np.mean(probs,axis=1)
+        else:
+            return probs
+ 
+    def get_uncertainty(self, X):
+        """Return uncertainty estimates.
+
+        Calculate estimates for epistemic and aleatoric uncertainty based on Jensen-Shannon divergence. 
+
+        See paper about Aleatoric and Epistemic uncertainty in Machine Learning: An Introduction to Concepts and Methods (https://arxiv.org/abs/1910.09457) and https://en.wikipedia.org/wiki/Jensen%E2%80%93Shannon_divergence
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape (n_samples, n_features)
             Input samples.
     
         Returns
         -------
-        T : array-like of shape (n_samples, n_classes)
-            Returns the probability of the sample for each class in the model,
-            where classes are ordered as they are in ``self.classes_``.
+        u_a : ndarray, shape (n_samples,)
+            Array of aleatoric uncertainty estimates for each sample.
+        u_e : ndarray, shape (n_samples,)
+            Array of epistemic uncertainty estimates for each sample.
         """
- 
-    def predict_uncer(self, x):
+        # Check input
+        X = check_array(X)
+        # Obtain probabilities
+        P = self.predict_proba(X, avg=False)
+        return u.calculate_uncertainty_jsd(P) 
 
