@@ -1,5 +1,5 @@
 # Byte-compiled / optmimized
-__pycache__/
+./uacls/__pycache__/
 
 # TODO: delete later
 test.py
