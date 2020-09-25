@@ -20,7 +20,7 @@ TODO
 
 ## Basic usage
 
-```
+```python
 import numpy as np
 
 from sklearn.svm import svc
