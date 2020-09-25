@@ -91,7 +91,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         self.ensemble_ = p.fit(self.estimator, self.X_, self.y_, self.n_jobs, self.n_mc_samples, self.n_samples_, self.random_state_)
         stop_time = time.time()
         if self.verbose >= 1:
-            _message_with_time("UAClassifier", "fitting", stop_time-start_time)
+            print(_message_with_time("UAClassifier", "fitting", stop_time-start_time))
 
         return self
 
@@ -121,7 +121,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
                     method.")
         stop_time = time.time()
         if self.verbose >= 1:
-            _message_with_time("UAClassifier", "predicting", stop_time-start_time)
+            print(_message_with_time("UAClassifier", "predicting", stop_time-start_time))
         if avg:
             return np.apply_along_axis(u.get_most_common_el, 1, preds)
 
@@ -156,7 +156,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
                     appropriate arguments before using this method.")
         stop_time = time.time()
         if self.verbose >= 1:
-            _message_with_time("UAClassifier", "predicting probabilities", stop_time-start_time)
+            print(_message_with_time("UAClassifier", "predicting probabilities", stop_time-start_time))
         if avg:
             return np.mean(probs, axis=1)
         

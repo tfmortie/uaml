@@ -8,7 +8,7 @@ predict_state = {"X": None,
         "ensemble": None, 
         "results": []}
 
-def _add_fit( models):
+def _add_fit(models):
     global fit_state
     fit_state["results"].extend(models)
 
@@ -92,7 +92,7 @@ def fit(estimator, X, y, n_jobs, n_tasks, n_samples, random_state=None):
     # Add fit tasks to pool
     num_models_per_worker = [len(a) for a in np.array_split(range(n_tasks), num_workers)]
     for i in range(num_workers):
-        fit_pool.apply_async(_fit, args=(estimator, num_models_per_worker[i], n_samples, random_state), callback=_add_fit).get()
+        fit_pool.apply_async(_fit, args=(estimator, num_models_per_worker[i], n_samples, random_state), callback=_add_fit)
     fit_pool.close()
     fit_pool.join()
     ensemble = fit_state["results"]
@@ -135,14 +135,14 @@ def predict(ensemble, X, n_jobs, random_state):
     num_models_per_worker = [len(a) for a in np.array_split(range(len(ensemble)), num_workers)]
     start_ind = 0
     for i in range(num_workers):
-        predict_pool.apply_async(_predict, args=(start_ind, num_models_per_worker[i]), callback=_add_predict).get()
+        predict_pool.apply_async(_predict, args=(start_ind, num_models_per_worker[i]), callback=_add_predict)
         start_ind += num_models_per_worker[i]
     predict_pool.close()
     predict_pool.join()
     # Get predictions, sort and stack
     preds = predict_state["results"]
     preds.sort(key=lambda x: x[0])
-    preds = np.vstack([p[1] for p in preds])
+    preds = np.hstack([p[1] for p in preds])
 
     return preds
     
@@ -182,7 +182,7 @@ def predict_proba(ensemble, X, n_jobs, random_state):
     num_models_per_worker = [len(a) for a in np.array_split(range(len(ensemble)), num_workers)]
     start_ind = 0
     for i in range(num_workers):
-        predict_proba_pool.apply_async(_predict_proba, args=(start_ind, num_models_per_worker[i]), callback=_add_predict_proba).get()
+        predict_proba_pool.apply_async(_predict_proba, args=(start_ind, num_models_per_worker[i]), callback=_add_predict_proba)
         start_ind += num_models_per_worker[i]
     predict_proba_pool.close()
     predict_proba_pool.join()
