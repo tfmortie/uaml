@@ -1,3 +1,8 @@
+"""
+Code for uncertainty-aware classifiers
+
+Author: Thomas Mortier
+"""
 import time
 
 import numpy as np
@@ -8,7 +13,6 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted, ch
 from sklearn.utils import _message_with_time
 from sklearn.exceptions import NotFittedError, FitFailedWarning
 
-import uaml.utils as u
 import uaml.process as p
 
 class UAClassifier(BaseEstimator, ClassifierMixin):
@@ -186,7 +190,16 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         """
         # Check input
         X = check_array(X)
-        # Obtain probabilities
-        P = self.predict_proba(X, avg=False)
-
-        return u.calculate_uncertainty_jsd(P)
+        start_time = time.time()
+        try:
+            # Obtain probabilities
+            P = self.predict_proba(X, avg=False)
+        except NotFittedError as e:
+            print("This model is not fitted yet. Cal 'fit' with \
+                    appropriate arguments before using this method.")
+        u_a, u_e = p.get_uncertainty_jsd(P, self.n_jobs)
+        stop_time = time.time()
+        if self.verbose >= 1:
+            print(_message_with_time("UAClassifier", "calculating uncertainty", stop_time-start_time))
+        
+        return u_a, u_e 

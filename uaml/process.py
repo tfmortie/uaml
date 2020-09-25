@@ -1,5 +1,11 @@
+"""
+Contains model-specific functions that are parellelizable
+
+Author: Thomas Mortier
+"""
 import multiprocessing as mp
 import numpy as np
+import uaml.utils as u
 
 fit_state = {"X": None, 
         "y": None, 
@@ -7,6 +13,8 @@ fit_state = {"X": None,
 predict_state = {"X": None, 
         "ensemble": None, 
         "results": []}
+uncertainty_state = {"P": None,
+        "results" : []}
 
 def _add_fit(models):
     global fit_state
@@ -50,6 +58,16 @@ def _predict_proba(i, n_models):
     batch_probs = np.concatenate(batch_probs, axis=1)
 
     return (i, batch_probs)
+
+def _add_get_uncertainty_jsd(batch_u):
+    global uncertainty_state
+    uncertainty_state["results"].append(batch_u)
+
+def _get_uncertainty_jsd(i, n_samples):
+    global uncertainty_state
+    batch_ua, batch_ue = u.calculate_uncertainty_jsd(uncertainty_state["P"][i:i+n_samples])
+
+    return (i, batch_ua, batch_ue) 
 
 def fit(estimator, X, y, n_jobs, n_tasks, n_samples, random_state=None):
     """Represents a general fit process.
@@ -192,3 +210,46 @@ def predict_proba(ensemble, X, n_jobs, random_state):
     probs = np.concatenate([p[1] for p in probs], axis=1)
     
     return probs
+
+def get_uncertainty_jsd(P, n_jobs):
+    """Represents a general jsd uncertainty calculation process.
+
+    Parameters
+    ----------
+    P : ndarray, shape (n_samples, n_mc_samples, n_classes) 
+        Array of probability distributions.
+    n_jobs : int
+        Number of cores to use.
+
+    Returns
+    -------
+    u_a : ndarray, shape (n_samples,)
+        Array of aleatoric uncertainty estimates for each sample.
+    u_e : ndarray, shape (n_samples,)
+        Array of epistemic uncertainty estimates for each sample.
+    """
+    global uncertainty_state
+    # Set global state 
+    uncertainty_state["P"] = P
+    uncertainty_state["results"] = []
+    # Check how many workers we need 
+    if not n_jobs is None:
+        num_workers = max(min(mp.cpu_count(), n_jobs), 1)
+    else:
+        num_workers = 1
+    # Intialize the pool with workers
+    get_uncertainty_pool = mp.Pool(num_workers)
+    # Add uncertainty tasks to pool
+    num_samples_per_worker = [len(a) for a in np.array_split(range(P.shape[0]), num_workers)]
+    start_ind = 0
+    for i in range(num_workers):
+        get_uncertainty_pool.apply_async(_get_uncertainty_jsd, args=(start_ind, num_samples_per_worker[i]), callback=_add_get_uncertainty_jsd)
+        start_ind += num_samples_per_worker[i]
+    get_uncertainty_pool.close()
+    get_uncertainty_pool.join()
+    # Get uncertainties, sort and stack
+    u = uncertainty_state["results"]
+    u.sort(key=lambda x: x[0])
+    u_a, u_e = np.asarray([ui[1] for ui in u]), np.asarray([ui[2] for ui in u])
+    
+    return u_a, u_e
