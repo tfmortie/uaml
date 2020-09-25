@@ -22,7 +22,7 @@ def get_most_common_el(x):
     return values[np.argmax(counts)]
 
 def entropy(p, eps=0.000001):
-    """Function which calculates the Shannon entropy.
+    """Elementwise function for calculation of entropy.
 
     Parameters
     ----------
@@ -34,9 +34,9 @@ def entropy(p, eps=0.000001):
     Returns
     -------
     ent : float
-        Shannon entropy of p.
+        Value of the elementwise entropy function evaluated for each element in p.
     """ 
-    ent = -np.sum(p*np.log2(p.clip(min=eps)))
+    ent = p*np.log2(p.clip(min=eps))
     return ent
 
 def calculate_uncertainty_jsd(P):
@@ -56,7 +56,7 @@ def calculate_uncertainty_jsd(P):
     u_e : ndarray, shape (n_samples,)
         Array of epistemic uncertainty estimates for each sample.
     """ 
-    u_t = np.apply_along_axis(entropy, 1, np.mean(P, axis=1))
-    u_a = np.mean(np.apply_along_axis(entropy, 2, P), axis=1) 
+    u_t = -1*np.sum(entropy(np.mean(P,axis=1)),axis=1)
+    u_a = np.mean(-1*np.sum(entropy(P),axis=2), axis=1)
     u_e = u_t - u_a
     return u_a, u_e
