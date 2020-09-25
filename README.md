@@ -23,12 +23,11 @@ TODO
 ```python
 import numpy as np
 
-from sklearn.svm import svc
+from sklearn.svm import SVC
 from uaml.classifier import UAClassifier
 
 # Some example data
-X_train, y_train = np.random.randn(1000,100), np.random.randint(0,5,1000)
-X_test = np.random.randn(100,100)
+X_train, X_test, y_train = np.random.randn(1000,100), np.random.randn(100,100), np.random.randint(0,5,1000)
 
 # Use SVC as base (probabilistic) estimator
 estm = SVC(gamma=2, C=1, probability=True) 
