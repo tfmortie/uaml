@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import numpy as np
 
 fit_state = {"X": None, 
         "y": None, 
@@ -7,7 +8,7 @@ predict_state = {"X": None,
         "ensemble": None, 
         "results": []}
 
-def _add_fit(self, models):
+def _add_fit( models):
     global fit_state
     fit_state["results"].extend(models)
 
@@ -24,31 +25,31 @@ def _fit(estimator, n_models, n_samples, random_state):
 
     return models
 
-def _add_predict(self, batch_preds):
+def _add_predict(batch_preds):
     global predict_state
     predict_state["results"].append(batch_preds)
 
-def _predict(self, i, n_models):
+def _predict(i, n_models):
     global predict_state
     batch_preds = []
     for m_i in range(i, i+n_models):
-        batch_preds.append(predict_state["ensemble"][m_i]["clf"].predict(X).reshape(-1, 1))
+        batch_preds.append(predict_state["ensemble"][m_i]["clf"].predict(predict_state["X"]).reshape(-1, 1))
     batch_preds = np.hstack(batch_preds)
     
-    return batch_preds
+    return (i, batch_preds)
 
-def _add_predict_proba(self, batch_probs):
+def _add_predict_proba(batch_probs):
     global predict_state
     predict_state["results"].append(batch_probs)
 
-def _predict_proba(self, i, n_models):
+def _predict_proba(i, n_models):
     global predict_state
     batch_probs = []
     for m_i in range(i, i+n_models):
-        batch_probs.append(np.expand_dims(predict_state["ensemble"][m_i]["clf"].predict_proba(X), axis=1))
-    batch_probs = np.vstack(batch_probs)
+        batch_probs.append(np.expand_dims(predict_state["ensemble"][m_i]["clf"].predict_proba(predict_state["X"]), axis=1))
+    batch_probs = np.concatenate(batch_probs, axis=1)
 
-    return batch_probs
+    return (i, batch_probs)
 
 def fit(estimator, X, y, n_jobs, n_tasks, n_samples, random_state=None):
     """Represents a general fit process.
@@ -134,12 +135,14 @@ def predict(ensemble, X, n_jobs, random_state):
     num_models_per_worker = [len(a) for a in np.array_split(range(len(ensemble)), num_workers)]
     start_ind = 0
     for i in range(num_workers):
-        predict_pool.apply_async(self._predict, args=(start_ind, num_models_per_worker[i]), callback=self._add_predict).get()
+        predict_pool.apply_async(_predict, args=(start_ind, num_models_per_worker[i]), callback=_add_predict).get()
         start_ind += num_models_per_worker[i]
     predict_pool.close()
     predict_pool.join()
+    # Get predictions, sort and stack
     preds = predict_state["results"]
-    preds = np.vstack(preds)
+    preds.sort(key=lambda x: x[0])
+    preds = np.vstack([p[1] for p in preds])
 
     return preds
     
@@ -179,10 +182,13 @@ def predict_proba(ensemble, X, n_jobs, random_state):
     num_models_per_worker = [len(a) for a in np.array_split(range(len(ensemble)), num_workers)]
     start_ind = 0
     for i in range(num_workers):
-        predict_proba_pool.apply_async(self._predict_proba, args=(start_ind, num_models_per_worker[i]), callback=self._add_predict_proba).get()
+        predict_proba_pool.apply_async(_predict_proba, args=(start_ind, num_models_per_worker[i]), callback=_add_predict_proba).get()
         start_ind += num_models_per_worker[i]
     predict_proba_pool.close()
     predict_proba_pool.join()
-    probs = np.concatenate(predict_state["results"], axis=1)
+    # Get predictions, sort and stack
+    probs = predict_state["results"]
+    probs.sort(key=lambda x: x[0])
+    probs = np.concatenate([p[1] for p in probs], axis=1)
     
     return probs

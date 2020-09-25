@@ -114,7 +114,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         X = check_array(X)
         start_time = time.time()
         try:
-            preds = p.predict(self.ensemble_, X, self.n_jobs, self.random_state):
+            preds = p.predict(self.ensemble_, X, self.n_jobs, self.random_state)
         except NotFittedError as e:
             print("This model is not fitted yet. Cal 'fit' \
                     with appropriate arguments before using this \
@@ -150,7 +150,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         X = check_array(X)
         start_time = time.time()
         try:
-            probs = p.predict_proba(self.ensemble_, X, self.n_jobs, self.random_state):
+            probs = p.predict_proba(self.ensemble_, X, self.n_jobs, self.random_state)
         except NotFittedError as e:
             print("This model is not fitted yet. Cal 'fit' with \
                     appropriate arguments before using this method.")
