@@ -7,11 +7,11 @@ import multiprocessing as mp
 import numpy as np
 import uaml.utils as u
 
-fit_state = {"X": None, 
-        "y": None, 
+fit_state = {"model" : None,
+        "X" : None,
         "results": []}
-predict_state = {"X": None, 
-        "ensemble": None, 
+predict_state = {"model": None, 
+        "X" : None,
         "results": []}
 uncertainty_state = {"P": None,
         "results" : []}
@@ -20,15 +20,15 @@ def _add_fit(models):
     global fit_state
     fit_state["results"].extend(models)
 
-def _fit(estimator, n_models, n_samples, random_state):
+def _fit(n_models):
     global fit_state
     models = []
     for _ in range(n_models):
         model = {}
         # Create estimator, given parameters of base estimator and bootstrap sample indices
-        model["clf"] = type(estimator)(**estimator.get_params())
-        model["ind"] = random_state.randint(0, fit_state["X"].shape[0], size=n_samples)
-        model["clf"].fit(fit_state["X"][model["ind"], :], fit_state["y"][model["ind"]])
+        model["clf"] = type(fit_state["model"].estimator)(**fit_state["model"].estimator.get_params())
+        model["ind"] = fit_state["model"].random_state_.randint(0, fit_state["model"].X_.shape[0], size=fit_state["model"].n_samples_)
+        model["clf"].fit(fit_state["model"].X_[model["ind"], :], fit_state["model"].y_[model["ind"]])
         models.append(model)
 
     return models
@@ -41,8 +41,14 @@ def _predict(i, n_models):
     global predict_state
     batch_preds = []
     for m_i in range(i, i+n_models):
-        batch_preds.append(predict_state["ensemble"][m_i]["clf"].predict(predict_state["X"]).reshape(-1, 1))
-    batch_preds = np.hstack(batch_preds)
+        if predict_state["model"].n_outputs_ > 1:
+            batch_preds.append(np.expand_dims(predict_state["model"].ensemble_[m_i]["clf"].predict(predict_state["X"]), axis=1))
+        else:
+            batch_preds.append(predict_state["model"].ensemble_[m_i]["clf"].predict(predict_state["X"]).reshape(-1, 1))
+    if predict_state["model"].n_outputs_ > 1:
+        batch_preds = np.concatenate(batch_preds, axis=1) 
+    else:
+        batch_preds = np.hstack(batch_preds)
     
     return (i, batch_preds)
 
@@ -54,7 +60,11 @@ def _predict_proba(i, n_models):
     global predict_state
     batch_probs = []
     for m_i in range(i, i+n_models):
-        batch_probs.append(np.expand_dims(predict_state["ensemble"][m_i]["clf"].predict_proba(predict_state["X"]), axis=1))
+        if predict_state["model"].n_outputs_ > 1:
+            probs_list = predict_state["model"].ensemble_[m_i]["clf"].predict_proba(predict_state["X"])
+            batch_probs.append(np.expand_dims(np.concatenate([np.expand_dims(p, axis=1) for p in probs_list], axis=1), axis=1))
+        else:
+            batch_probs.append(np.expand_dims(predict_state["model"].ensemble_[m_i]["clf"].predict_proba(predict_state["X"]), axis=1))
     batch_probs = np.concatenate(batch_probs, axis=1)
 
     return (i, batch_probs)
@@ -69,26 +79,13 @@ def _get_uncertainty_jsd(i, n_samples):
 
     return (i, batch_ua, batch_ue) 
 
-def fit(estimator, X, y, n_jobs, n_tasks, n_samples, random_state=None):
+def fit(model):
     """Represents a general fit process.
 
     Parameters
     ----------
-    estimator : scikit-learn base estimator
-        Represents the base estimator for the fit task.
-    X : {array-like, sparse matrix}, shape (n_samples, n_features)
-        The training input samples.
-    y : array-like, shape (n_samples,) or (n_samples, n_outputs)
-        The class labels
-    n_jobs : int
-        Number of cores to use.
-    n_tasks : int
-        Number of tasks (in this case fits) to be divided among the cores.
-    n_samples : int
-        Number of samples to consider for each task.
-    random_state : RandomState or an int seed, default=None
-        A random number generator instance to define the state of the
-        random permutations generator.
+    model : uncertainty-aware model
+        Represents the fitted uncertainty-aware model.
 
     Returns
     -------
@@ -97,40 +94,34 @@ def fit(estimator, X, y, n_jobs, n_tasks, n_samples, random_state=None):
     """
     global fit_state
     # Set global state 
-    fit_state["X"] = X
-    fit_state["y"] = y
+    fit_state["model"] = model
     fit_state["results"] = []
     # Check how many workers we need 
-    if not n_jobs is None:
-        num_workers = max(min(mp.cpu_count(), n_jobs), 1)
+    if not model.n_jobs is None:
+        num_workers = max(min(mp.cpu_count(), model.n_jobs), 1)
     else:
         num_workers = 1
     # Intialize the pool with workers
     fit_pool = mp.Pool(num_workers)
     # Add fit tasks to pool
-    num_models_per_worker = [len(a) for a in np.array_split(range(n_tasks), num_workers)]
+    num_models_per_worker = [len(a) for a in np.array_split(range(model.n_mc_samples), num_workers)]
     for i in range(num_workers):
-        fit_pool.apply_async(_fit, args=(estimator, num_models_per_worker[i], n_samples, random_state), callback=_add_fit)
+        fit_pool.apply_async(_fit, args=(num_models_per_worker[i],), callback=_add_fit)
     fit_pool.close()
     fit_pool.join()
     ensemble = fit_state["results"]
 
     return ensemble
 
-def predict(ensemble, X, n_jobs, random_state):
+def predict(model, X):
     """Represents a general predict process.
 
     Parameters
     ----------
-    ensemble : list of scikit-learn base estimators
-        Represents the ensemble consisting of fitted scikit-learn base estimators.
+    model : uncertainty-aware model
+        Represents the fitted uncertainty-aware model.
     X : {array-like, sparse matrix}, shape (n_samples, n_features)
         Input samples.
-    n_jobs : int
-        Number of cores to use.
-    random_state : RandomState or an int seed, default=None
-        A random number generator instance to define the state of the
-        random permutations generator.
 
     Returns
     -------
@@ -139,18 +130,18 @@ def predict(ensemble, X, n_jobs, random_state):
     """
     global predict_state
     # Set global state 
+    predict_state["model"] = model
     predict_state["X"] = X
-    predict_state["ensemble"] = ensemble
     predict_state["results"] = []
     # Check how many workers we need 
-    if not n_jobs is None:
-        num_workers = max(min(mp.cpu_count(), n_jobs), 1)
+    if not model.n_jobs is None:
+        num_workers = max(min(mp.cpu_count(), model.n_jobs), 1)
     else:
         num_workers = 1
     # Intialize the pool with workers
     predict_pool = mp.Pool(num_workers)
     # Add predict tasks to pool
-    num_models_per_worker = [len(a) for a in np.array_split(range(len(ensemble)), num_workers)]
+    num_models_per_worker = [len(a) for a in np.array_split(range(len(model.ensemble_)), num_workers)]
     start_ind = 0
     for i in range(num_workers):
         predict_pool.apply_async(_predict, args=(start_ind, num_models_per_worker[i]), callback=_add_predict)
@@ -164,20 +155,15 @@ def predict(ensemble, X, n_jobs, random_state):
 
     return preds
     
-def predict_proba(ensemble, X, n_jobs, random_state):
+def predict_proba(model, X):
     """Represents a general predict probabilities process.
 
     Parameters
     ----------
-    ensemble : list of scikit-learn base estimators
-        Represents the ensemble consisting of fitted scikit-learn base estimators.
+    model : uncertainty-aware model
+        Represents the fitted uncertainty-aware model.
     X : {array-like, sparse matrix}, shape (n_samples, n_features)
         Input samples.
-    n_jobs : int
-        Number of cores to use.
-    random_state : RandomState or an int seed, default=None
-        A random number generator instance to define the state of the
-        random permutations generator.
 
     Returns
     -------
@@ -186,18 +172,18 @@ def predict_proba(ensemble, X, n_jobs, random_state):
     """
     global predict_state
     # Set global state 
+    predict_state["model"] = model
     predict_state["X"] = X
-    predict_state["ensemble"] = ensemble
     predict_state["results"] = []
     # Check how many workers we need 
-    if not n_jobs is None:
-        num_workers = max(min(mp.cpu_count(), n_jobs), 1)
+    if not model.n_jobs is None:
+        num_workers = max(min(mp.cpu_count(), model.n_jobs), 1)
     else:
         num_workers = 1
     # Intialize the pool with workers
     predict_proba_pool = mp.Pool(num_workers)
     # Add predict tasks to pool
-    num_models_per_worker = [len(a) for a in np.array_split(range(len(ensemble)), num_workers)]
+    num_models_per_worker = [len(a) for a in np.array_split(range(len(model.ensemble_)), num_workers)]
     start_ind = 0
     for i in range(num_workers):
         predict_proba_pool.apply_async(_predict_proba, args=(start_ind, num_models_per_worker[i]), callback=_add_predict_proba)

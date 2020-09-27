@@ -7,13 +7,14 @@ import time
 
 import numpy as np
 
-from sklearn.utils.multiclass import unique_labels
+from sklearn.utils.multiclass import unique_labels, is_multilabel
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted, check_random_state
 from sklearn.utils import _message_with_time
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted, check_random_state
 from sklearn.exceptions import NotFittedError, FitFailedWarning
 
 import uaml.process as p
+import uaml.utils as u
 
 class UAClassifier(BaseEstimator, ClassifierMixin):
     """Generic uncertainty-aware classifier.
@@ -70,7 +71,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         """
         self.random_state_ = check_random_state(self.random_state)
         # Check that X and y have correct shape
-        X, y = check_X_y(X, y)
+        X, y = check_X_y(X, y, multi_output=True)
         # Check whether base estimator supports probabilities
         if not hasattr(self.estimator, 'predict_proba'):
             raise NotFittedError("{0} does not support \
@@ -85,14 +86,18 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         if not self.n_jobs is None:
             if not isinstance(self.n_jobs, int):
                 raise TypeError("Parameter n_jobs must be of type int.")
-        # Store the classes and complete data seen during fit
+        # Store the number of outputs, classes for each output and complete data seen during fit
+        if is_multilabel(y):
+            self.n_outputs_ = y.shape[1]
+        else:
+            self.n_outputs_ = 1
         self.classes_ = unique_labels(y)
         self.X_ = X
         self.y_ = y
         # Now initialize and fit the ensemble
         self.n_samples_ = int(X.shape[0]*self.mc_sample_size)
         start_time = time.time()
-        self.ensemble_ = p.fit(self.estimator, self.X_, self.y_, self.n_jobs, self.n_mc_samples, self.n_samples_, self.random_state_)
+        self.ensemble_ = p.fit(self)
         stop_time = time.time()
         if self.verbose >= 1:
             print(_message_with_time("UAClassifier", "fitting", stop_time-start_time))
@@ -118,7 +123,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         X = check_array(X)
         start_time = time.time()
         try:
-            preds = p.predict(self.ensemble_, X, self.n_jobs, self.random_state)
+            preds = p.predict(self, X)
         except NotFittedError as e:
             print("This model is not fitted yet. Cal 'fit' \
                     with appropriate arguments before using this \
@@ -148,13 +153,13 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         -------
         probs : ndarray
             Returns the probability of the sample for each class in the model,
-            where classes are ordered as they are in ``self.classes_``.
+            where classes are ordered as they are in self.classes_.
         """
         # Check input
         X = check_array(X)
         start_time = time.time()
         try:
-            probs = p.predict_proba(self.ensemble_, X, self.n_jobs, self.random_state)
+            probs = p.predict_proba(self, X)
         except NotFittedError as e:
             print("This model is not fitted yet. Cal 'fit' with \
                     appropriate arguments before using this method.")
@@ -183,10 +188,10 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
 
         Returns
         -------
-        u_a : ndarray, shape (n_samples,)
-            Array of aleatoric uncertainty estimates for each sample.
-        u_e : ndarray, shape (n_samples,)
-            Array of epistemic uncertainty estimates for each sample.
+        u_a : ndarray, shape (n_samples, n_outputs)
+            Array of aleatoric uncertainty estimates for each sample and output.
+        u_e : ndarray, shape (n_samples, n_outputs)
+            Array of epistemic uncertainty estimates for each sample and output.
         """
         # Check input
         X = check_array(X)
@@ -197,9 +202,37 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         except NotFittedError as e:
             print("This model is not fitted yet. Cal 'fit' with \
                     appropriate arguments before using this method.")
-        u_a, u_e = p.get_uncertainty_jsd(P, self.n_jobs)
+        if self.n_outputs_ > 1:
+            u_a, u_e = [], []
+            for di in range(P.shape[2]):
+                u_a_di, u_e_di = p.get_uncertainty_jsd(P[:,:,di,:], self.n_jobs)
+                u_a.append(u_a_di.reshape(-1,1))
+                u_e.append(u_e_di.reshape(-1,1))
+            u_a, u_e = np.hstack(u_a), np.hstack(u_e)
+        else:
+            u_a, u_e = p.get_uncertainty_jsd(P, self.n_jobs)
         stop_time = time.time()
         if self.verbose >= 1:
             print(_message_with_time("UAClassifier", "calculating uncertainty", stop_time-start_time))
         
         return u_a, u_e 
+
+    #def score(self, X, y, avg=True):
+    #    """
+    #    Return the mean accuracy on the given test data and labels.
+    #    In multi-label classification, this is the subset accuracy
+    #    which is a harsh metric since you require for each sample that
+    #    each label set be correctly predicted.
+    #    Parameters
+    #    ----------
+    #    X : array-like of shape (n_samples, n_features)
+    #        Test samples.
+    #    y : array-like of shape (n_samples,) or (n_samples, n_outputs)
+    #        True labels for X.
+    #    sample_weight : array-like of shape (n_samples,), default=None
+    #        Sample weights.
+    #    Returns
+    #    -------
+    #    score : float
+    #        Mean accuracy of self.predict(X) wrt. y.
+    #    """k
