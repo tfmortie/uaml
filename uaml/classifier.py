@@ -7,11 +7,12 @@ import time
 
 import numpy as np
 
-from sklearn.utils.multiclass import unique_labels, is_multilabel
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.utils.multiclass import unique_labels, is_multilabel
 from sklearn.utils import _message_with_time
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted, check_random_state
 from sklearn.exceptions import NotFittedError, FitFailedWarning
+from sklearn.metrics import accuracy_score
 
 import uaml.process as p
 import uaml.utils as u
@@ -217,22 +218,39 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         
         return u_a, u_e 
 
-    #def score(self, X, y, avg=True):
-    #    """
-    #    Return the mean accuracy on the given test data and labels.
-    #    In multi-label classification, this is the subset accuracy
-    #    which is a harsh metric since you require for each sample that
-    #    each label set be correctly predicted.
-    #    Parameters
-    #    ----------
-    #    X : array-like of shape (n_samples, n_features)
-    #        Test samples.
-    #    y : array-like of shape (n_samples,) or (n_samples, n_outputs)
-    #        True labels for X.
-    #    sample_weight : array-like of shape (n_samples,), default=None
-    #        Sample weights.
-    #    Returns
-    #    -------
-    #    score : float
-    #        Mean accuracy of self.predict(X) wrt. y.
-    #    """k
+    def score(self, X, y, normalize=True, sample_weight=None):
+        """Return mean accuracy score.
+        
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Test samples.
+        y : array-like of shape (n_samples,) or (n_samples, n_outputs)
+            True labels for X.
+        normalize : bool, optional (default=True)
+            If False, return the number of correctly classified samples.
+            Otherwise, return the fraction of correctly classified samples.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Sample weights.
+       
+        Returns
+        -------
+        score : float
+            Mean accuracy of self.predict(X) wrt. y.
+        """
+        # Check that X and y have correct shape
+        X, y = check_X_y(X, y, multi_output=True)
+        start_time = time.time()
+        try:
+            preds = p.predict(self, X)
+        except NotFittedError as e:
+            print("This model is not fitted yet. Cal 'fit' \
+                    with appropriate arguments before using this \
+                    method.")
+        stop_time = time.time()
+        if self.verbose >= 1:
+            print(_message_with_time("UAClassifier", "calculating score", stop_time-start_time))
+        preds = np.apply_along_axis(u.get_most_common_el, 1, preds)
+        score = accuracy_score(y, preds, normalize=normalize, sample_weight=sample_weight) 
+
+        return score
