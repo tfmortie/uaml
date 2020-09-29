@@ -236,6 +236,6 @@ def get_uncertainty_jsd(P, n_jobs):
     # Get uncertainties, sort and stack
     u = uncertainty_state["results"]
     u.sort(key=lambda x: x[0])
-    u_a, u_e = np.asarray([ui[1] for ui in u]), np.asarray([ui[2] for ui in u])
+    u_a, u_e = np.concatenate([ui[1] for ui in u]), np.concatenate([ui[2] for ui in u])
     
     return u_a, u_e
