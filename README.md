@@ -33,7 +33,7 @@ estm = SVC(gamma=2, C=1, probability=True)
 clf = UAClassifier(estm, mc_sample_size=0.5, n_mc_samples=500, n_jobs=5)
 clf.fit(X_train, y_train)
 
-# Obtain predictions by means of majority voting and get corresponding uncertainties
+# Obtain predictions by means of majority voting and calculate aleatoric and epistemic uncertainty
 yhat = clf.predict(X_test, avg=True)
 ua, ue = clf.get_uncertainty(X_test)
 ```
