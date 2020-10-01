@@ -13,8 +13,6 @@ Following packages are required:
 
 ### User installation
 
-TODO
-
 ## Basic usage
 
 ```python
