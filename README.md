@@ -29,7 +29,7 @@ X_train, X_test, y_train = np.random.randn(1000,100), np.random.randn(100,100), 
 # Use SVC as base (probabilistic) estimator
 estm = SVC(gamma=2, C=1, probability=True) 
 
-# Constuct and fit an uncertainty-aware classifier with 500 estimators and parellilize over 5 cores 
+# Constuct and fit an uncertainty-aware classifier with 500 estimators and parallelize over 5 cores 
 clf = UAClassifier(estm, mc_sample_size=0.5, n_mc_samples=500, n_jobs=5)
 clf.fit(X_train, y_train)
 
