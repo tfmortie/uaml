@@ -1,9 +1,8 @@
-# Uncertainty-Aware Machine Learning
+# Uncertainty-Aware Machine Learning 
 
-**uaml** is a Python module for easy yet highly effective uncertainty-aware machine learning. Currently, it is built on top of scikit-learn and supports all probabilistic base (multiclass, multi-label and multitarget) classifiers. More precisely, the following models are currently implemented:
+**uaml** is a Python module for easy yet highly effective uncertainty-aware machine learning based on probabilistic ensembles. Currently, it is built on top of scikit-learn and supports all probabilistic base classifiers. More precisely, the following models are currently implemented:
 
-* Probabilistic classification ensembles
-* ...
+Note: work in progress
 
 ## Installation 
 
@@ -43,6 +42,6 @@ ua, ue = clf.get_uncertainty(X_test)
 
 ## References
 
-Aleatoric and Epistemic Uncertainty in
+[1] Aleatoric and Epistemic Uncertainty in
 Machine Learning: An Introduction
 to Concepts and Methods (https://arxiv.org/pdf/1910.09457.pdf)
