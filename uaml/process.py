@@ -1,5 +1,5 @@
 """
-Contains model-specific functions that are parellelizable
+Contains model-specific functions that are parallelizable
 
 Author: Thomas Mortier
 """
