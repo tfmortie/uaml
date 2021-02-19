@@ -8,8 +8,8 @@
 
 Following packages are required:
 
-* numpy 
-* scikit-learn
+* NumPy 
+* Scikit-learn
 
 ### User installation
 
