@@ -6,7 +6,7 @@
 
 ### Dependencies 
 
-Following packages are required:
+Following modules are required:
 
 * NumPy 
 * Scikit-learn
