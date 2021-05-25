@@ -5,7 +5,7 @@ Author: Thomas Mortier
 """
 import multiprocessing as mp
 import numpy as np
-import uaml.utils as u
+from ..uaml import utils as u
 
 fit_state = {"model" : None,
         "X" : None,

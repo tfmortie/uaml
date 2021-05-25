@@ -14,8 +14,8 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted, ch
 from sklearn.exceptions import NotFittedError, FitFailedWarning
 from sklearn.metrics import accuracy_score
 
-import uaml.process as p
-import uaml.utils as u
+from ..uaml import process as p
+from ..uaml import utils as u
 
 class UAClassifier(BaseEstimator, ClassifierMixin):
     """Generic uncertainty-aware classifier.
