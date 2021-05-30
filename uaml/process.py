@@ -3,8 +3,10 @@ Contains model-specific functions that are parallelizable
 
 Author: Thomas Mortier
 """
+from sklearn.base import clone
 import multiprocessing as mp
 import numpy as np
+import psutil # TODO: delete afterwards
 from ..uaml import utils as u
 
 fit_state = {"model" : None,
@@ -23,12 +25,15 @@ def _add_fit(models):
 def _fit(n_models):
     global fit_state
     models = []
-    for _ in range(n_models):
+    for _ in range(n_models): 
         model = {}
         # Create estimator, given parameters of base estimator and bootstrap sample indices
-        model["clf"] = type(fit_state["model"].estimator)(**fit_state["model"].estimator.get_params())
+        model["clf"] = clone(fit_state["model"].estimator)
         model["ind"] = fit_state["model"].random_state_.randint(0, fit_state["model"].X_.shape[0], size=fit_state["model"].n_samples_)
-        model["clf"].fit(fit_state["model"].X_[model["ind"], :], fit_state["model"].y_[model["ind"]])
+        try:
+            model["clf"].fit(fit_state["model"].X_[model["ind"], :], fit_state["model"].y_[model["ind"]])
+        except Exception as e:
+            print("Exception caught while fitting ensemble: {0}".format(e),flush=True) 
         models.append(model)
 
     return models
