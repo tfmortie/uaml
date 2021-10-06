@@ -6,8 +6,7 @@ Author: Thomas Mortier
 from sklearn.base import clone
 import multiprocessing as mp
 import numpy as np
-import psutil # TODO: delete afterwards
-from ..uaml import utils as u
+import uaml.utils as u
 
 fit_state = {"model" : None,
         "X" : None,
