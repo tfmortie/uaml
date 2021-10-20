@@ -4,7 +4,6 @@ Code for uncertainty-aware classifiers
 Author: Thomas Mortier
 """
 import time
-
 import numpy as np
 
 from sklearn.base import BaseEstimator, ClassifierMixin

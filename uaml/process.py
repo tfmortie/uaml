@@ -3,9 +3,12 @@ Contains model-specific functions that are parallelizable
 
 Author: Thomas Mortier
 """
-from sklearn.base import clone
 import multiprocessing as mp
 import numpy as np
+
+from sklearn.base import clone
+from sklearn.model_selection import StratifiedShuffleSplit
+
 from . import utils as u
 
 fit_state = {"model" : None,
@@ -24,16 +27,17 @@ def _add_fit(models):
 def _fit(n_models):
     global fit_state
     models = []
-    for _ in range(n_models): 
-        model = {}
-        # Create estimator, given parameters of base estimator and bootstrap sample indices
-        model["clf"] = clone(fit_state["model"].estimator)
-        model["ind"] = fit_state["model"].random_state_.randint(0, fit_state["model"].X_.shape[0], size=fit_state["model"].n_samples_)
-        try:
+    ss = StratifiedShuffleSplit(n_splits=n_models, train_size=fit_state["model"].n_samples_, random_state=fit_state["model"].random_state_)
+    try: 
+        for train_index, _ in ss.split(fit_state["model"].X_, fit_state["model"].y_):
+            model = {}
+            # Create estimator, given parameters of base estimator and bootstrap sample indices
+            model["clf"] = clone(fit_state["model"].estimator)
+            model["ind"] = train_index
             model["clf"].fit(fit_state["model"].X_[model["ind"], :], fit_state["model"].y_[model["ind"]])
-        except Exception as e:
-            print("Exception caught while fitting ensemble: {0}".format(e),flush=True) 
-        models.append(model)
+            models.append(model)
+    except Exception as e:
+        print("Exception caught while fitting ensemble: {0}".format(e),flush=True) 
 
     return models
 
