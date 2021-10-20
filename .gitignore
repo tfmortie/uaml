@@ -1,4 +1,6 @@
 # Byte-compiled / optmimized
+__pycache__/
+*.py[cod]
 uacls/__pycache__/
 uacls/__pycache__/*.pyc
 
