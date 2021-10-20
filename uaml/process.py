@@ -6,7 +6,6 @@ Author: Thomas Mortier
 from sklearn.base import clone
 import multiprocessing as mp
 import numpy as np
-import psutil # TODO: delete afterwards
 from ..uaml import utils as u
 
 fit_state = {"model" : None,
@@ -159,7 +158,7 @@ def predict(model, X):
     preds = np.hstack([p[1] for p in preds])
 
     return preds
-    
+
 def predict_proba(model, X):
     """Represents a general predict probabilities process.
 

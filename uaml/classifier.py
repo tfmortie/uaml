@@ -10,8 +10,8 @@ import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.multiclass import unique_labels, is_multilabel
 from sklearn.utils import _message_with_time
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted, check_random_state
-from sklearn.exceptions import NotFittedError, FitFailedWarning
+from sklearn.utils.validation import check_X_y, check_array, check_random_state
+from sklearn.exceptions import NotFittedError
 from sklearn.metrics import accuracy_score
 
 from ..uaml import process as p
