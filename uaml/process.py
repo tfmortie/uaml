@@ -6,7 +6,7 @@ Author: Thomas Mortier
 from sklearn.base import clone
 import multiprocessing as mp
 import numpy as np
-import uaml.utils as u
+from . import utils as u
 
 fit_state = {"model" : None,
         "X" : None,
