@@ -1,4 +1,4 @@
-# Uncertainty-Aware Machine Learning 
+# Uncertainty-aware machine learning 
 
 Python package for uncertainty-aware classification built on top of Scikit-learn. 
 
