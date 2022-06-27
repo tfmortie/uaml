@@ -38,4 +38,4 @@ ua, ue = clf.get_uncertainty(X_test)
 
 ## References
 
-* _Aleatoric and epistemic uncertainty in machine learning: an introduction to concepts and methods, H\"ullermeier et al., Machine learning (2021)_
+* _Aleatoric and epistemic uncertainty in machine learning: an introduction to concepts and methods, Hüllermeier et al., Machine learning (2021)_
