@@ -40,15 +40,16 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
 
     Examples
     --------
-    >>> from uaml import UAClassifier
+    >>> from sklearn.linear_model import LogisticRegression
+    >>> from uaml.classifier import UAClassifier
     >>> import numpy as np
     >>> X = np.arange(100).reshape(100, 1)
     >>> y = np.zeros((100, ))
-    >>> clf = UAClassifier()
+    >>> clf = UAClassifier(LogisticRegression())
     >>> clf.fit(X,y)
     """
 
-    def __init__(self, estimator, mc_sample_size, n_mc_samples=10, n_jobs=None, random_state=None, verbose=0):
+    def __init__(self, estimator, mc_sample_size=0.5, n_mc_samples=10, n_jobs=None, random_state=None, verbose=0):
         self.estimator = estimator
         self.mc_sample_size = mc_sample_size
         self.n_mc_samples = n_mc_samples
@@ -76,8 +77,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         X, y = check_X_y(X, y, multi_output=True) # multi-output not supported (yet) 
         # Check whether base estimator supports probabilities
         if not hasattr(self.estimator, 'predict_proba'):
-            raise NotFittedError("{0} does not support \
-                    probabilistic predictions.".format(self.estimator))
+            raise NotFittedError("{0} does not support probabilistic predictions.".format(self.estimator))
         # Check if mc_sample_size is float
         if not isinstance(self.mc_sample_size, float):
             raise TypeError("Parameter mc_sample_size must be of type float.")
@@ -128,9 +128,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         try:
             preds = predict(self, X)
         except NotFittedError as e:
-            print("Error {}, this model is not fitted yet. Cal 'fit' \
-                    with appropriate arguments before using this \
-                    method.".format(e))
+            print("Error {}, this model is not fitted yet. Cal 'fit' with appropriate arguments before using this method.".format(e))
         stop_time = time.time()
         if self.verbose >= 1:
             print(_message_with_time("UAClassifier", "predicting", stop_time-start_time))
@@ -163,8 +161,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         try:
             probs = predict_proba(self, X)
         except NotFittedError as e:
-            print("Error {}, this model is not fitted yet. Cal 'fit' with \
-                    appropriate arguments before using this method.".format(e))
+            print("Error {}, this model is not fitted yet. Cal 'fit' with appropriate arguments before using this method.".format(e))
         stop_time = time.time()
         if self.verbose >= 1:
             print(_message_with_time("UAClassifier", "predicting probabilities", stop_time-start_time))
@@ -199,8 +196,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
             # Obtain probabilities
             P = self.predict_proba(X, avg=False)
         except NotFittedError as e:
-            print("Error {}, this model is not fitted yet. Cal 'fit' with \
-                    appropriate arguments before using this method.".format(e))
+            print("Error {}, this model is not fitted yet. Cal 'fit' with appropriate arguments before using this method.".format(e))
         if self.n_outputs_ > 1:
             u_a, u_e = [], []
             for di in range(P.shape[2]):
@@ -242,9 +238,7 @@ class UAClassifier(BaseEstimator, ClassifierMixin):
         try:
             preds = predict(self, X)
         except NotFittedError as e:
-            print("Error {}, this model is not fitted yet. Cal 'fit' \
-                    with appropriate arguments before using this \
-                    method.".format(e))
+            print("Error {}, this model is not fitted yet. Cal 'fit' with appropriate arguments before using this method.".format(e))
         stop_time = time.time()
         if self.verbose >= 1:
             print(_message_with_time("UAClassifier", "calculating score", stop_time-start_time))

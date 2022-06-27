@@ -1,15 +1,17 @@
 # Uncertainty-Aware Machine Learning 
 
-**uaml** is a Python module for easy and effective uncertainty-aware machine learning based on probabilistic ensembles and the Jensen–Shannon divergence. Currently, it is built on top of scikit-learn and supports all probabilistic base classifiers. 
+Python package for uncertainty-aware classification built on top of Scikit-learn. 
 
-## Dependencies 
+## Description
 
-Following modules are required:
+**uaml** is a Python package for uncertainty-aware machine learning based on probabilistic ensembles and the Jensen–Shannon divergence. Currently, it is built on top of scikit-learn and supports all probabilistic base classifiers. 
 
-* NumPy 
-* Scikit-learn
+## Installation
 
-## Basic usage
+Clone this repository [`tfmortie/uaml`](https://github.com/tfmortie/uaml.git) and run `pip install . -r requirements.txt`
+or install by means of `pip install uaml`.
+
+## Examples
 
 ```python
 import numpy as np
@@ -36,6 +38,4 @@ ua, ue = clf.get_uncertainty(X_test)
 
 ## References
 
-[1] Aleatoric and Epistemic Uncertainty in
-Machine Learning: An Introduction
-to Concepts and Methods (https://arxiv.org/pdf/1910.09457.pdf)
+* _Aleatoric and epistemic uncertainty in machine learning: an introduction to concepts and methods, H\"ullermeier et al., Machine learning (2021)_
