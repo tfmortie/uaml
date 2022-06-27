@@ -1,7 +1,8 @@
 """
-Some important functions that are used throughout the module
+Some important functions that are used throughout the package.
 
 Author: Thomas Mortier
+Date: June 2022
 """
 import numpy as np
 
@@ -15,11 +16,13 @@ def get_most_common_el(x):
 
     Returns
     -------
-    y : object
+    o : object
         Most common element from x.
     """ 
-    (values, counts) = np.unique(x,return_counts=True)
-    return values[np.argmax(counts)]
+    (values, counts) = np.unique(x, return_counts=True)
+    o = values[np.argmax(counts)]
+
+    return o
 
 def entropy(p, eps=0.000001):
     """Elementwise function for calculation of entropy.
@@ -37,12 +40,13 @@ def entropy(p, eps=0.000001):
         Value of the elementwise entropy function evaluated for each element in p.
     """ 
     ent = p*np.log2(p.clip(min=eps))
+
     return ent
 
 def calculate_uncertainty_jsd(P):
     """Function which calculates aleatoric and epistemic uncertainty based on Jensen-Shannon divergence.
 
-    See https://arxiv.org/abs/1910.09457 and https://en.wikipedia.org/wiki/Jensen%E2%80%93Shannon_divergence
+    See https://arxiv.org/abs/1910.09457 and https://en.wikipedia.org/wiki/Jensen%E2%80%93Shannon_divergence.
 
     Parameters
     ----------
@@ -59,4 +63,5 @@ def calculate_uncertainty_jsd(P):
     u_t = -1*np.sum(entropy(np.mean(P,axis=1)),axis=1)
     u_a = np.mean(-1*np.sum(entropy(P),axis=2), axis=1)
     u_e = u_t - u_a
+
     return u_a, u_e

@@ -1,36 +1,39 @@
 """
-Contains model-specific functions that are parallelizable
+Contains model-specific functions that are parallelizable.
 
 Author: Thomas Mortier
+Date: June 2022
 """
-from sklearn.base import clone
 import multiprocessing as mp
 import numpy as np
-import uaml.utils as u
 
-fit_state = {"model" : None,
+from sklearn.base import clone
+from .utils import calculate_uncertainty_jsd
+
+""" some state vars that are needed """
+FITSTATE = {"model" : None,
         "X" : None,
         "results": []}
-predict_state = {"model": None, 
+PREDICTSTATE = {"model": None, 
         "X" : None,
         "results": []}
-uncertainty_state = {"P": None,
+UNCERTAINTYSTATE = {"P": None,
         "results" : []}
 
 def _add_fit(models):
-    global fit_state
-    fit_state["results"].extend(models)
+    global FITSTATE
+    FITSTATE["results"].extend(models)
 
 def _fit(n_models):
-    global fit_state
+    global FITSTATE
     models = []
     for _ in range(n_models): 
         model = {}
         # Create estimator, given parameters of base estimator and bootstrap sample indices
-        model["clf"] = clone(fit_state["model"].estimator)
-        model["ind"] = fit_state["model"].random_state_.randint(0, fit_state["model"].X_.shape[0], size=fit_state["model"].n_samples_)
+        model["clf"] = clone(FITSTATE["model"].estimator)
+        model["ind"] = FITSTATE["model"].random_state_.randint(0, FITSTATE["model"].X_.shape[0], size=FITSTATE["model"].n_samples_)
         try:
-            model["clf"].fit(fit_state["model"].X_[model["ind"], :], fit_state["model"].y_[model["ind"]])
+            model["clf"].fit(FITSTATE["model"].X_[model["ind"], :], FITSTATE["model"].y_[model["ind"]])
         except Exception as e:
             print("Exception caught while fitting ensemble: {0}".format(e),flush=True) 
         models.append(model)
@@ -38,18 +41,18 @@ def _fit(n_models):
     return models
 
 def _add_predict(batch_preds):
-    global predict_state
-    predict_state["results"].append(batch_preds)
+    global PREDICTSTATE
+    PREDICTSTATE["results"].append(batch_preds)
 
 def _predict(i, n_models):
-    global predict_state
+    global PREDICTSTATE
     batch_preds = []
     for m_i in range(i, i+n_models):
-        if predict_state["model"].n_outputs_ > 1:
-            batch_preds.append(np.expand_dims(predict_state["model"].ensemble_[m_i]["clf"].predict(predict_state["X"]), axis=1))
+        if PREDICTSTATE["model"].n_outputs_ > 1:
+            batch_preds.append(np.expand_dims(PREDICTSTATE["model"].ensemble_[m_i]["clf"].predict(PREDICTSTATE["X"]), axis=1))
         else:
-            batch_preds.append(predict_state["model"].ensemble_[m_i]["clf"].predict(predict_state["X"]).reshape(-1, 1))
-    if predict_state["model"].n_outputs_ > 1:
+            batch_preds.append(PREDICTSTATE["model"].ensemble_[m_i]["clf"].predict(PREDICTSTATE["X"]).reshape(-1, 1))
+    if PREDICTSTATE["model"].n_outputs_ > 1:
         batch_preds = np.concatenate(batch_preds, axis=1) 
     else:
         batch_preds = np.hstack(batch_preds)
@@ -57,29 +60,29 @@ def _predict(i, n_models):
     return (i, batch_preds)
 
 def _add_predict_proba(batch_probs):
-    global predict_state
-    predict_state["results"].append(batch_probs)
+    global PREDICTSTATE
+    PREDICTSTATE["results"].append(batch_probs)
 
 def _predict_proba(i, n_models):
-    global predict_state
+    global PREDICTSTATE
     batch_probs = []
     for m_i in range(i, i+n_models):
-        if predict_state["model"].n_outputs_ > 1:
-            probs_list = predict_state["model"].ensemble_[m_i]["clf"].predict_proba(predict_state["X"])
+        if PREDICTSTATE["model"].n_outputs_ > 1:
+            probs_list = PREDICTSTATE["model"].ensemble_[m_i]["clf"].predict_proba(PREDICTSTATE["X"])
             batch_probs.append(np.expand_dims(np.concatenate([np.expand_dims(p, axis=1) for p in probs_list], axis=1), axis=1))
         else:
-            batch_probs.append(np.expand_dims(predict_state["model"].ensemble_[m_i]["clf"].predict_proba(predict_state["X"]), axis=1))
+            batch_probs.append(np.expand_dims(PREDICTSTATE["model"].ensemble_[m_i]["clf"].predict_proba(PREDICTSTATE["X"]), axis=1))
     batch_probs = np.concatenate(batch_probs, axis=1)
 
     return (i, batch_probs)
 
 def _add_get_uncertainty_jsd(batch_u):
-    global uncertainty_state
-    uncertainty_state["results"].append(batch_u)
+    global UNCERTAINTYSTATE
+    UNCERTAINTYSTATE["results"].append(batch_u)
 
 def _get_uncertainty_jsd(i, n_samples):
-    global uncertainty_state
-    batch_ua, batch_ue = u.calculate_uncertainty_jsd(uncertainty_state["P"][i:i+n_samples])
+    global UNCERTAINTYSTATE
+    batch_ua, batch_ue = calculate_uncertainty_jsd(UNCERTAINTYSTATE["P"][i:i+n_samples])
 
     return (i, batch_ua, batch_ue) 
 
@@ -96,10 +99,10 @@ def fit(model):
     ensemble : list
         Returns a list of fitted base estimators.
     """
-    global fit_state
+    global FITSTATE
     # Set global state 
-    fit_state["model"] = model
-    fit_state["results"] = []
+    FITSTATE["model"] = model
+    FITSTATE["results"] = []
     # Check how many workers we need 
     if not model.n_jobs is None:
         num_workers = max(min(mp.cpu_count(), model.n_jobs), 1)
@@ -113,7 +116,7 @@ def fit(model):
         fit_pool.apply_async(_fit, args=(num_models_per_worker[i],), callback=_add_fit)
     fit_pool.close()
     fit_pool.join()
-    ensemble = fit_state["results"]
+    ensemble = FITSTATE["results"]
 
     return ensemble
 
@@ -129,14 +132,14 @@ def predict(model, X):
 
     Returns
     -------
-    preds : ndarray
+    preds : ndarray, shape (n_samples, model.n_mc_samples)
         Returns an array of predicted class labels.
     """
-    global predict_state
+    global PREDICTSTATE
     # Set global state 
-    predict_state["model"] = model
-    predict_state["X"] = X
-    predict_state["results"] = []
+    PREDICTSTATE["model"] = model
+    PREDICTSTATE["X"] = X
+    PREDICTSTATE["results"] = []
     # Check how many workers we need 
     if not model.n_jobs is None:
         num_workers = max(min(mp.cpu_count(), model.n_jobs), 1)
@@ -153,7 +156,7 @@ def predict(model, X):
     predict_pool.close()
     predict_pool.join()
     # Get predictions, sort and stack
-    preds = predict_state["results"]
+    preds = PREDICTSTATE["results"]
     preds.sort(key=lambda x: x[0])
     preds = np.hstack([p[1] for p in preds])
 
@@ -174,11 +177,11 @@ def predict_proba(model, X):
     probs : ndarray
         Returns the probability of the sample for each class in the model.
     """
-    global predict_state
+    global PREDICTSTATE
     # Set global state 
-    predict_state["model"] = model
-    predict_state["X"] = X
-    predict_state["results"] = []
+    PREDICTSTATE["model"] = model
+    PREDICTSTATE["X"] = X
+    PREDICTSTATE["results"] = []
     # Check how many workers we need 
     if not model.n_jobs is None:
         num_workers = max(min(mp.cpu_count(), model.n_jobs), 1)
@@ -195,7 +198,7 @@ def predict_proba(model, X):
     predict_proba_pool.close()
     predict_proba_pool.join()
     # Get predictions, sort and stack
-    probs = predict_state["results"]
+    probs = PREDICTSTATE["results"]
     probs.sort(key=lambda x: x[0])
     probs = np.concatenate([p[1] for p in probs], axis=1)
     
@@ -218,10 +221,10 @@ def get_uncertainty_jsd(P, n_jobs):
     u_e : ndarray, shape (n_samples,)
         Array of epistemic uncertainty estimates for each sample.
     """
-    global uncertainty_state
+    global UNCERTAINTYSTATE
     # Set global state 
-    uncertainty_state["P"] = P
-    uncertainty_state["results"] = []
+    UNCERTAINTYSTATE["P"] = P
+    UNCERTAINTYSTATE["results"] = []
     # Check how many workers we need 
     if not n_jobs is None:
         num_workers = max(min(mp.cpu_count(), n_jobs), 1)
@@ -238,7 +241,7 @@ def get_uncertainty_jsd(P, n_jobs):
     get_uncertainty_pool.close()
     get_uncertainty_pool.join()
     # Get uncertainties, sort and stack
-    u = uncertainty_state["results"]
+    u = UNCERTAINTYSTATE["results"]
     u.sort(key=lambda x: x[0])
     u_a, u_e = np.concatenate([ui[1] for ui in u]), np.concatenate([ui[2] for ui in u])
     
