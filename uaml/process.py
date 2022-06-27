@@ -8,6 +8,7 @@ import multiprocessing as mp
 import numpy as np
 
 from sklearn.base import clone
+from sklearn.model_selection import StratifiedShuffleSplit
 from .utils import calculate_uncertainty_jsd
 
 """ some state vars that are needed """
@@ -27,16 +28,17 @@ def _add_fit(models):
 def _fit(n_models):
     global FITSTATE
     models = []
-    for _ in range(n_models): 
-        model = {}
-        # Create estimator, given parameters of base estimator and bootstrap sample indices
-        model["clf"] = clone(FITSTATE["model"].estimator)
-        model["ind"] = FITSTATE["model"].random_state_.randint(0, FITSTATE["model"].X_.shape[0], size=FITSTATE["model"].n_samples_)
-        try:
+    ss = StratifiedShuffleSplit(n_splits=n_models, train_size=FITSTATE["model"].n_samples_, random_state=FITSTATE["model"].random_state_)
+    try: 
+        for train_index, _ in ss.split(FITSTATE["model"].X_, FITSTATE["model"].y_):
+            model = {}
+            # Create estimator, given parameters of base estimator and bootstrap sample indices
+            model["clf"] = clone(FITSTATE["model"].estimator)
+            model["ind"] = train_index
             model["clf"].fit(FITSTATE["model"].X_[model["ind"], :], FITSTATE["model"].y_[model["ind"]])
-        except Exception as e:
-            print("Exception caught while fitting ensemble: {0}".format(e),flush=True) 
-        models.append(model)
+            models.append(model)
+    except Exception as e:
+        print("Exception caught while fitting ensemble: {0}".format(e),flush=True) 
 
     return models
 
@@ -161,7 +163,7 @@ def predict(model, X):
     preds = np.hstack([p[1] for p in preds])
 
     return preds
-    
+
 def predict_proba(model, X):
     """Represents a general predict probabilities process.
 
