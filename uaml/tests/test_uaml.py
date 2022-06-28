@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.datasets import load_digits, make_multilabel_classification
+from sklearn.datasets import load_digits
 from uaml.multiclass import UAClassifier
 from sklearn.datasets import make_moons, make_classification
 from sklearn.model_selection import train_test_split
