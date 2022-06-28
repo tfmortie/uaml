@@ -6,6 +6,7 @@ Date: June 2022
 """
 import numpy as np
 
+
 def get_most_common_el(x):
     """Function which returns most common element.
 
@@ -18,11 +19,12 @@ def get_most_common_el(x):
     -------
     o : object
         Most common element from x.
-    """ 
+    """
     (values, counts) = np.unique(x, return_counts=True)
     o = values[np.argmax(counts)]
 
     return o
+
 
 def entropy(p, eps=0.000001):
     """Elementwise function for calculation of entropy.
@@ -38,10 +40,11 @@ def entropy(p, eps=0.000001):
     -------
     ent : float
         Value of the elementwise entropy function evaluated for each element in p.
-    """ 
-    ent = p*np.log2(p.clip(min=eps))
+    """
+    ent = p * np.log2(p.clip(min=eps))
 
     return ent
+
 
 def calculate_uncertainty_jsd(P):
     """Function which calculates aleatoric and epistemic uncertainty based on Jensen-Shannon divergence.
@@ -50,7 +53,7 @@ def calculate_uncertainty_jsd(P):
 
     Parameters
     ----------
-    P : ndarray, shape (n_samples, n_mc_samples, n_classes) 
+    P : ndarray, shape (n_samples, n_mc_samples, n_classes)
         Array of probability distributions.
 
     Returns
@@ -59,9 +62,9 @@ def calculate_uncertainty_jsd(P):
         Array of aleatoric uncertainty estimates for each sample.
     u_e : ndarray, shape (n_samples,)
         Array of epistemic uncertainty estimates for each sample.
-    """ 
-    u_t = -1*np.sum(entropy(np.mean(P,axis=1)),axis=1)
-    u_a = np.mean(-1*np.sum(entropy(P),axis=2), axis=1)
+    """
+    u_t = -1 * np.sum(entropy(np.mean(P, axis=1)), axis=1)
+    u_a = np.mean(-1 * np.sum(entropy(P), axis=2), axis=1)
     u_e = u_t - u_a
 
     return u_a, u_e

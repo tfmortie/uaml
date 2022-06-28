@@ -154,3 +154,4 @@ dmypy.json
 
 # Files related to experiments 
 files/
+uaml/tests/uncertainty.png
