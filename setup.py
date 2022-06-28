@@ -23,6 +23,7 @@ setup(
         "numpy",
         "scikit-learn>=0.23.0",
         "setuptools",
+        "matplotlib"
     ],
     include_package_data=True,
 )
