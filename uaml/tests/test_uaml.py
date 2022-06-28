@@ -53,6 +53,7 @@ def test_basic():
     print(u_a)
     print(u_e)
 
+
 def test_advanced():
     classifiers = {
         "LR": LogisticRegression(solver="liblinear"),
