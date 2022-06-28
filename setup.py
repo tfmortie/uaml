@@ -19,6 +19,12 @@ setup(
     author_email="thomas.mortier92@gmail.com",
     url="https://github.com/tfmortie/uaml",
     packages=["uaml"],
-    install_requires=["numpy", "scikit-learn>=0.23.0", "setuptools", "matplotlib"],
+    install_requires=[
+        "numpy",
+        "scikit-learn>=0.23.0",
+        "setuptools",
+        "matplotlib",
+        "joblib",
+    ],
     include_package_data=True,
 )
