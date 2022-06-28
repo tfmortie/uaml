@@ -1,4 +1,4 @@
-# Uncertainty-aware machine learning 
+# Uncertainty-aware machine learning ![build](https://github.com/tfmortie/uaml/actions/workflows/build.yml/badge.svg?branch=main) ![pypi version](https://badge.fury.io/py/uaml.svg) ![license](https://img.shields.io/github/license/tfmortie/uaml)
 
 Python package for uncertainty-aware classification built on top of Scikit-learn. 
 
