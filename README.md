@@ -22,6 +22,7 @@ We start by importing some packages that we will need throughout the example:
 ```python
 from sklearn.datasets import make_moons
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 
 # some example data
 X, y = make_moons(n_samples=100, noise=0.1, random_state=0)
